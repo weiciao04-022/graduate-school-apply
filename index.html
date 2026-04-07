@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 研究所申請戰情室</title>
+    
+    <!-- 引入 React, ReactDOM, Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 引入 PapaParse (用來解析 CSV) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <!-- 引入 Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; }
+        /* 隱藏捲軸但保留滾動功能 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // ==========================================
+        // 1. 資料區 (CSV Data)
+        // 這裡放置了您試算表中的資料片段。
+        // 未來若要更新，只要將完整 CSV 內容貼在對應的反引號 (`) 中間即可。
+        // ==========================================
+        
+        const rawDailyData = `日期,星期,週次,階段,今日 IELTS 主軸,今日申請主軸,A 早段深度工作（最重要）,A段具體步驟,A段分鐘,B 下午訓練,B段具體步驟,B段分鐘,C 晚間整理／寫作,C段具體步驟,C段分鐘,今日最低產出,今日完成定義,需上網查核 / 已代查,參考位置,狀態,實際投入(分鐘),總預估分鐘,備註
+2026-04-06,週一,1,Phase 1｜盤點與開機,Reading 基線,作品 inventory,整理申請主資料夾＋建立命名規則,"1. 建立 01_Schools / 02_IELTS / 03_Portfolio / 04_CV_Resume / 05_SOP_Essays / 06_LOR / 07_Transcripts / 99_Submitted 資料夾
+2. 命名規則統一：YYYYMMDD_學校_文件版本，例如 20260406_Columbia_CV_v0
+3. 把雲端與本機同步，避免只存一份
+4. 在「文件追蹤」sheet 填入目前已有檔案",45,IELTS Reading 診斷 1 回（限時）,"1. 打開官方 Academic Reading 樣題 1 回
+2. 60 分鐘限時完成，不查字典
+3. 對答案，記 raw score / 40
+4. 把錯題標成：定位錯 / 單字不懂 / 句法看不懂 / 時間爆掉",75,把所有中文作品列成清單（標題／刊登處／可否翻譯）,"1. 拆成可在 30–40 分鐘內完成的小步驟
+2. 先做最關鍵的第一版
+3. 留下可檢查的產出",50,完成 1 份清冊或 1 回診斷,A段完成 + B段有記分/檢討 + C段有可交付檔案,"- IELTS 官方樣題 / 評分標準 / 分數換算已放在「IELTS資源」sheet",- IELTS資源,未開始,,170,
+2026-04-07,週二,1,Phase 1｜盤點與開機,Listening 基線,學校池建立,IELTS Listening 診斷 1 回,"1. 專心聽力測試，模擬實戰環境
+2. 記錄分數，錯題分析",45,整理錯題：分類為字彙／定位／粗心／時間分配,"1. 找出弱點
+2. 規劃改善策略",60,建立學校 master list（至少 8 校）,"1. 搜尋 8 所目標學校
+2. 記錄錄取要求與截止日",60,錯題分類表 + 學校清單,A/B/C 段均有初步產出,- 學校清單,URL,未開始,,165,
+
+2026-09-28,週一,26,Phase 8｜封版與送件準備,輕量維持,Columbia 套件,Columbia 套件總檢,"1. 拆成可在 30–40 分鐘內完成的小步驟
+2. 先做最關鍵的第一版
+3. 留下可檢查的產出
+4. 完成後更新狀態與備註",50,Reading / Listening 輕量維持,"1. 限時完成指定題量
+2. 對答案、記 raw score
+3. 回原文定位所有錯題
+4. 寫 1 條下次避免再錯的規則",30,修正最後格式問題,"1. 拆成可在 30–40 分鐘內完成的小步驟
+2. 先做最關鍵的第一版
+3. 留下可檢查的產出
+4. 完成後更新狀態與備註",50,總檢完一校,A段完成 + B段有記分/檢討 + C段有可交付檔案；最低標準：總檢完一校,"- IELTS 官方樣題 / 評分標準 / 分數換算已放在「IELTS資源」sheet
+- 學校官方 admissions / program 頁已放在「學校清單」sheet",- 學校清單：12 校官方 admissions + program URL,未開始,,130,
+2026-09-29,週二,26,Phase 8｜封版與送件準備,輕量維持,第二校套件,第二所學校套件總檢,"1. 拆成可在 30–40 分鐘內完成的小步驟
+2. 先做最關鍵的第一版",50,Speaking 維持,"1. 自我計時練習
+2. 檢討語速",30,送件前最後確認,"1. 檢查所有上傳文件",50,第二校總檢,送出申請確認,無,無,未開始,,130,`;
+
+        const rawSchoolsData = `Priority Rank,Suggested Tier,School,Program,Degree,Duration,City,Fit / 為何值得申請,Latest Official Cycle Note (checked 2026-04-06),Key Materials,English Note,Admissions URL,Program URL,Status,你的評估 / 備註
+主申/衝刺,Columbia University,Journalism M.S.,M.S.,9.5 months,"New York, NY",品牌強、新聞網絡最強之一；適合把校刊/報導作品升級成專業作品集。,"As of 2026-04-06: official page shows Jan 12 application deadline, decision mid-March, August start. 2027 cycle date still要再查。",Transcript; 3 LOR; writing test; English proficiency; essays; resume; writing/work samples,Official page requires proof of English proficiency where applicable.,https://journalism.columbia.edu/deadlines-and-application-requirements,https://journalism.columbia.edu/ms-degree,未開始,
+主申/衝刺,Northwestern University,Medill M.S. in Journalism (MSJ),M.S.,1 year,"Evanston / Chicago, IL",實作強、採訪訓練硬、都市新聞與專題報導資源好。,"As of 2026-04-06: Fall 2026 extended until May 31, 2026; prior rounds were Nov 10 / Jan 16 / Mar 30. 2027 cycle需於2026年秋季重查。",Application; transcripts; LOR; essays; interview,Official info on English test,https://www.medill.northwestern.edu/journalism/graduate-journalism/admissions/deadlines.html,https://www.medill.northwestern.edu/journalism/graduate-journalism/academics/index.html,未開始,
+務實/保底,American University,Journalism and Public Affairs (MA),M.A.,11 months,"Washington, D.C.",政治新聞與華府資源極佳。,Rolling admissions typical,Transcripts; LOR; essays,Check requirements,https://www.american.edu/soc/admissions/graduate-apply.cfm,https://www.american.edu/soc/journalism/ma/ma-jupa.cfm,未開始,
+務實/保底,University of Missouri,Journalism Master’s Program (On-Campus),M.A./Master’s,Varies,"Columbia, MO",新聞學歷史深、傳統採訪訓練強；若你想強化基礎工法，這校值得放入。,As of 2026-04-06: program page links to grad school admission criteria; exact new-cycle deadline需到 Graduate School 再確認。,Essays; LOR; TOEFL/IELTS results page linked from program; see graduate school application,Program has dedicated TOEFL/IELTS results guidance page; recheck latest requirement.,https://journalism.missouri.edu/degrees-programs/graduate-degrees/masters/,https://journalism.missouri.edu/degrees-programs/graduate-degrees/masters/,未開始,
+務實/保底,Syracuse University,"Magazine, News & Digital Journalism / Broadcast & Digital Journalism (Master’s)",M.S.,1 year,"Syracuse, NY",數位出版與新聞實作強；若你想要實作型一年制可考慮。,"As of 2026-04-06: application materials by Jan 15 for priority consideration, then rolling review.",Use Newhouse graduate application process page,Verify international requirements.,https://newhouse.syracuse.edu/admissions/graduate/application-process/,https://newhouse.syracuse.edu/,未開始,`;
+
+        const rawIeltsData = `Resource,Use,URL,When to use,Status / Notes
+IELTS 主站,了解 test types / results / policy,https://ielts.org/,所有階段,
+Academic sample tests,官方 Academic sample tests（四科）,https://ielts.org/take-a-test/preparation-resources/sample-test-questions/academic-test,Reading/Listening/Writing/Speaking 基線與模考,
+Sample tests hub,官方 sample test questions 總入口,https://ielts.org/take-a-test/preparation-resources/sample-test-questions,所有階段,
+Reading practice,British Council free Reading practice,https://takeielts.britishcouncil.org/take-ielts/prepare/free-ielts-english-practice-tests/reading,Reading 訓練日,
+Listening practice,British Council free Listening practice,https://takeielts.britishcouncil.org/take-ielts/prepare/free-ielts-english-practice-tests/listening,Listening 訓練日,
+Free practice hub,British Council free online practice hub,https://takeielts.britishcouncil.org/take-ielts/prepare/free-ielts-english-practice-tests,所有階段,
+IELTS Ready,British Council prep package,https://takeielts.britishcouncil.org/take-ielts/prepare/ielts-ready,每週補強,
+Writing descriptors,官方 Writing band descriptors article,https://ielts.org/news-and-insights/ielts-writing-band-descriptors-and-key-assessment-criteria,Writing 自評,
+Writing descriptors PDF,官方 Writing band descriptors PDF,https://ielts.org/cdn/Guides/ielts-writing-band-descriptors.pdf,Writing 自評,
+Scoring in detail,官方分數換算與 Speaking criteria,https://ielts.org/take-a-test/your-results/ielts-scoring-in-detail,基線、模考、檢討,
+Booking,官方報名入口,https://ielts.org/take-a-test/book-your-test,預約首考 / 二戰,`;
+
+        const rawDocsData = `Scope,Item,Definition of done,Target date,Owner,Status,File path / link,Notes
+所有學校,學校清單初版,至少 8 校、含官方網址與截止日欄,2026-04-20,你,未開始,,
+所有學校,學校清單定稿,收斂為 6–8 校最終名單,2026-06-30,你,未開始,,
+所有學校,IELTS 首考預約,考場/日期已確定並寫入行事曆,2026-06-30,你,未開始,,
+所有學校,IELTS 成績策略,首考後決定是否二戰 / One Skill Retake,2026-07-31,你,未開始,,
+所有學校,CV/Resume v0,facts 補齊、版面成形,2026-04-30,你,未開始,,
+所有學校,Resume 定稿,可直接送出的大版本,2026-08-15,你,未開始,,
+所有學校,SOP Master v0,why journalism / why now / future goals 三段成形,2026-08-10,你,未開始,,
+所有學校,SOP Master v1,可分校改寫的主文,2026-08-31,你,未開始,,
+所有學校,推薦人 shortlist,至少 4–5 位名單與排序,2026-04-15,你,未開始,,
+所有學校,推薦信材料包,每位推薦人 1 頁 bullet + CV + school list,2026-05-15,你,未開始,,`;
+
+        const rawMilestoneData = `週次,開始,結束,階段,本週目標,IELTS 焦點,申請焦點,本週最低產出集合,本週完成狀態,備註
+1,2026-04-06 00:00:00,2026-04-12 00:00:00,Phase 1｜盤點與開機,完成基線診斷 + 作品清冊 + 學校池 v0 + 推薦人 shortlist,Reading 基線 / Listening 基線 / Writing 基線 / Speaking 基線,作品 inventory / 學校池建立 / 推薦人盤點 / 作品分級,完成 1 份清冊或 1 回診斷；錯題分類表 + 學校清單；1 篇診斷作文 + 自評；口說問題清單；候選作品 3 篇；週檢討 1 份；下週清單,未開始,
+2,2026-04-13 00:00:00,2026-04-19 00:00:00,Phase 1｜盤點與開機,完成基線診斷 + 作品清冊 + 學校池 v0 + 推薦人 shortlist,Reading 基線 / Listening 基線 / Writing 基線 / Speaking 基線,作品 inventory / 學校池建立 / 推薦人盤點 / 作品分級,完成 1 份清冊或 1 回診斷；錯題分類表 + 學校清單；1 篇診斷作文 + 自評；口說問題清單；候選作品 3 篇；週檢討 1 份；下週清單,未開始,
+20,2026-08-17 00:00:00,2026-08-23 00:00:00,Phase 6｜申請主文件期,SOP / Resume / Samples 逐步成稿；每校 requirements/checklist 完成,IELTS 維持 / Writing 維持 / Speaking 維持 / 弱科補強,SOP / 校系研究 / 推薦信請託 / 作品樣本,SOP 一段；2 校 notes；email 草稿；作品修稿；checklist 更新；週盤點；下週清單,未開始,
+21,2026-08-24 00:00:00,2026-08-30 00:00:00,Phase 6｜申請主文件期,SOP / Resume / Samples 逐步成稿；每校 requirements/checklist 完成,IELTS 維持 / Writing 維持 / Speaking 維持 / 弱科補強,SOP / 校系研究 / 推薦信請託 / 作品樣本,SOP 一段；2 校 notes；email 草稿；作品修稿；checklist 更新；週盤點；下週清單,未開始,`;
+
+        // ==========================================
+        // 2. React 元件與邏輯
+        // ==========================================
+        const { useState, useEffect, useMemo } = React;
+
+        // 輔助函數：格式化文字，將網址轉換為可點擊連結，並保留換行符號
+        const formatCellText = (text) => {
+            if (!text) return '';
+            
+            // 處理換行
+            const parts = text.split('\n');
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+            return parts.map((part, index) => {
+                // 如果這一行包含網址
+                if (urlRegex.test(part)) {
+                    const htmlContent = part.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-800 hover:underline font-medium break-all">$1</a>');
+                    return (
+                        <span key={index}>
+                            <span dangerouslySetInnerHTML={{ __html: htmlContent }} />
+                            {index < parts.length - 1 && <br />}
+                        </span>
+                    );
+                }
+                // 純文字
+                return (
+                    <span key={index}>
+                        {part}
+                        {index < parts.length - 1 && <br />}
+                    </span>
+                );
+            });
+        };
+
+        // 元件：通用資料表格
+        const DataTable = ({ data, title }) => {
+            if (!data || data.length === 0) return <div className="p-8 text-center text-gray-500">無資料</div>;
+            
+            const headers = Object.keys(data[0]);
+            
+            return (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                        <h2 className="text-lg font-bold text-slate-800">{title}</h2>
+                        <span className="text-xs font-medium bg-slate-200 text-slate-600 px-2 py-1 rounded-full">共 {data.length} 筆資料</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr>
+                                    {headers.map((header, i) => (
+                                        <th key={i} className="px-4 py-3 bg-slate-50 border-b border-slate-200 text-sm font-semibold text-slate-600 whitespace-nowrap">
+                                            {header}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {data.map((row, i) => (
+                                    <tr key={i} className="hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0">
+                                        {headers.map((header, j) => (
+                                            <td key={j} className="px-4 py-3 text-sm text-slate-700 min-w-[120px]">
+                                                {formatCellText(row[header])}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        // 元件：每日執行版 (核心功能)
+        const DailyExecutionView = ({ data }) => {
+            const [completedTasks, setCompletedTasks] = useState({});
+            
+            // 從 LocalStorage 讀取進度
+            useEffect(() => {
+                const saved = localStorage.getItem('grad_app_tasks');
+                if (saved) {
+                    try { setCompletedTasks(JSON.parse(saved)); } catch (e) {}
+                }
+            }, []);
+
+            // 儲存進度到 LocalStorage
+            const toggleTask = (date, section) => {
+                const key = `${date}_${section}`;
+                const newStatus = { ...completedTasks, [key]: !completedTasks[key] };
+                setCompletedTasks(newStatus);
+                localStorage.setItem('grad_app_tasks', JSON.stringify(newStatus));
+            };
+
+            // 取得台灣時間的今天日期 (格式 YYYY-MM-DD)
+            const todayStr = useMemo(() => {
+                // 使用 Intl.DateTimeFormat 確保在任何時區抓出來都是正確的日期
+                const options = { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' };
+                const formatter = new Intl.DateTimeFormat('en-CA', options); // en-CA 會輸出 YYYY-MM-DD
+                return formatter.format(new Date()); 
+            }, []);
+
+            // 尋找今天的任務
+            const todayTaskIndex = data.findIndex(row => row['日期'] === todayStr);
+            const todayTask = todayTaskIndex !== -1 ? data[todayTaskIndex] : null;
+
+            // 自動滾動到今天的任務 (如果在列表中的話)
+            useEffect(() => {
+                if (todayTask) {
+                    setTimeout(() => {
+                        const el = document.getElementById('today-card');
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 500);
+                }
+            }, [todayTask]);
+
+            return (
+                <div className="space-y-8 pb-12">
+                    {/* 今日任務大卡片 */}
+                    <div id="today-card" className={`rounded-2xl p-6 shadow-lg border-2 ${todayTask ? 'bg-gradient-to-br from-indigo-50 to-blue-50 border-indigo-200' : 'bg-white border-slate-200'}`}>
+                        <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 border-b border-indigo-100/50 pb-4">
+                            <div>
+                                <h2 className="text-2xl font-bold text-indigo-900 flex items-center gap-2">
+                                    <i className="ph-fill ph-calendar-star text-indigo-500"></i>
+                                    {todayTask ? '🌟 今日核心任務' : '今日無排定任務'}
+                                </h2>
+                                <p className="text-indigo-600/80 mt-1 font-medium">
+                                    {todayStr} {todayTask ? `| ${todayTask['星期']} | ${todayTask['週次']}週 | ${todayTask['階段']}` : ''}
+                                </p>
+                            </div>
+                            {todayTask && (
+                                <div className="mt-4 md:mt-0 flex gap-4 text-sm bg-white/60 px-4 py-2 rounded-xl backdrop-blur-sm">
+                                    <div className="text-center">
+                                        <div className="text-slate-500 text-xs">總預估</div>
+                                        <div className="font-bold text-indigo-700">{todayTask['總預估分鐘'] || '0'} min</div>
+                                    </div>
+                                    <div className="w-px bg-slate-200"></div>
+                                    <div className="text-center">
+                                        <div className="text-slate-500 text-xs">IELTS 主軸</div>
+                                        <div className="font-bold text-slate-700">{todayTask['今日 IELTS 主軸']}</div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {todayTask ? (
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                {/* A 段 */}
+                                <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 relative overflow-hidden group">
+                                    <div className="absolute top-0 left-0 w-1 h-full bg-red-400"></div>
+                                    <div className="flex justify-between items-start mb-3">
+                                        <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                                            A 早段深度
+                                        </h3>
+                                        <span className="bg-red-50 text-red-600 text-xs px-2 py-1 rounded font-bold">{todayTask['A段分鐘']}m</span>
+                                    </div>
+                                    <div className="text-sm font-semibold text-red-500 mb-2">{todayTask['A 早段深度工作（最重要）']}</div>
+                                    <div className="text-sm text-slate-600 space-y-1 mb-4">
+                                        {formatCellText(todayTask['A段具體步驟'])}
+                                    </div>
+                                    <button 
+                                        onClick={() => toggleTask(todayStr, 'A')}
+                                        className={`w-full py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${completedTasks[`${todayStr}_A`] ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                        <i className={`ph-bold ${completedTasks[`${todayStr}_A`] ? 'ph-check-circle' : 'ph-circle'}`}></i>
+                                        {completedTasks[`${todayStr}_A`] ? 'A段已完成' : '標記 A段 完成'}
+                                    </button>
+                                </div>
+
+                                {/* B 段 */}
+                                <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-1 h-full bg-blue-400"></div>
+                                    <div className="flex justify-between items-start mb-3">
+                                        <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                                            B 下午訓練
+                                        </h3>
+                                        <span className="bg-blue-50 text-blue-600 text-xs px-2 py-1 rounded font-bold">{todayTask['B段分鐘']}m</span>
+                                    </div>
+                                    <div className="text-sm font-semibold text-blue-500 mb-2">{todayTask['B 下午訓練']}</div>
+                                    <div className="text-sm text-slate-600 space-y-1 mb-4">
+                                        {formatCellText(todayTask['B段具體步驟'])}
+                                    </div>
+                                    <button 
+                                        onClick={() => toggleTask(todayStr, 'B')}
+                                        className={`w-full py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${completedTasks[`${todayStr}_B`] ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                        <i className={`ph-bold ${completedTasks[`${todayStr}_B`] ? 'ph-check-circle' : 'ph-circle'}`}></i>
+                                        {completedTasks[`${todayStr}_B`] ? 'B段已完成' : '標記 B段 完成'}
+                                    </button>
+                                </div>
+
+                                {/* C 段 */}
+                                <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-1 h-full bg-indigo-400"></div>
+                                    <div className="flex justify-between items-start mb-3">
+                                        <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                                            C 晚間整理
+                                        </h3>
+                                        <span className="bg-indigo-50 text-indigo-600 text-xs px-2 py-1 rounded font-bold">{todayTask['C段分鐘']}m</span>
+                                    </div>
+                                    <div className="text-sm font-semibold text-indigo-500 mb-2">{todayTask['C 晚間整理／寫作']}</div>
+                                    <div className="text-sm text-slate-600 space-y-1 mb-4">
+                                        {formatCellText(todayTask['C段具體步驟'])}
+                                    </div>
+                                    <button 
+                                        onClick={() => toggleTask(todayStr, 'C')}
+                                        className={`w-full py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${completedTasks[`${todayStr}_C`] ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                        <i className={`ph-bold ${completedTasks[`${todayStr}_C`] ? 'ph-check-circle' : 'ph-circle'}`}></i>
+                                        {completedTasks[`${todayStr}_C`] ? 'C段已完成' : '標記 C段 完成'}
+                                    </button>
+                                </div>
+
+                                {/* 最低產出 & 備註 (跨滿全寬) */}
+                                <div className="lg:col-span-3 bg-indigo-900/5 rounded-xl p-4 flex flex-col md:flex-row gap-4 border border-indigo-100">
+                                    <div className="flex-1">
+                                        <div className="text-xs text-indigo-800 font-bold mb-1">🎯 今日最低產出</div>
+                                        <div className="text-sm text-slate-700 font-medium">{todayTask['今日最低產出']}</div>
+                                    </div>
+                                    <div className="hidden md:block w-px bg-indigo-200"></div>
+                                    <div className="flex-1">
+                                        <div className="text-xs text-indigo-800 font-bold mb-1">✅ 今日完成定義</div>
+                                        <div className="text-sm text-slate-700">{todayTask['今日完成定義']}</div>
+                                    </div>
+                                    {todayTask['需上網查核 / 已代查'] && (
+                                        <>
+                                            <div className="hidden md:block w-px bg-indigo-200"></div>
+                                            <div className="flex-1">
+                                                <div className="text-xs text-indigo-800 font-bold mb-1">🔗 查核 / 參考</div>
+                                                <div className="text-sm text-slate-700">{formatCellText(todayTask['需上網查核 / 已代查'])}</div>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center py-10 text-slate-500">
+                                喔不，今天 ({todayStr}) 似乎沒有排定在計畫表格中。<br/>您可以往下看所有日程，或點擊上方分頁查看其他資訊。
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 所有日程列表 */}
+                    <div className="mt-8">
+                        <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i className="ph-fill ph-list-dashes text-indigo-500"></i> 所有日程表
+                        </h3>
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr>
+                                            <th className="px-4 py-3 bg-slate-50 border-b border-slate-200 text-sm font-semibold text-slate-600 whitespace-nowrap">日期</th>
+                                            <th className="px-4 py-3 bg-slate-50 border-b border-slate-200 text-sm font-semibold text-slate-600 whitespace-nowrap">階段</th>
+                                            <th className="px-4 py-3 bg-slate-50 border-b border-slate-200 text-sm font-semibold text-slate-600 min-w-[200px]">A 早段 (最重要)</th>
+                                            <th className="px-4 py-3 bg-slate-50 border-b border-slate-200 text-sm font-semibold text-slate-600 min-w-[200px]">B 下午</th>
+                                            <th className="px-4 py-3 bg-slate-50 border-b border-slate-200 text-sm font-semibold text-slate-600 min-w-[200px]">C 晚間</th>
+                                            <th className="px-4 py-3 bg-slate-50 border-b border-slate-200 text-sm font-semibold text-slate-600">最低產出</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.map((row, i) => {
+                                            const isToday = row['日期'] === todayStr;
+                                            return (
+                                                <tr key={i} className={`transition-colors border-b border-slate-100 last:border-0 ${isToday ? 'bg-indigo-50/50 hover:bg-indigo-50' : 'hover:bg-slate-50'}`}>
+                                                    <td className="px-4 py-3 text-sm whitespace-nowrap">
+                                                        <div className={`font-bold ${isToday ? 'text-indigo-600' : 'text-slate-700'}`}>{row['日期']}</div>
+                                                        <div className="text-xs text-slate-400">{row['星期']}</div>
+                                                        {isToday && <span className="mt-1 inline-block bg-indigo-100 text-indigo-700 text-[10px] px-2 py-0.5 rounded font-bold">今天</span>}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-xs text-slate-600 font-medium">{row['階段']}</td>
+                                                    <td className="px-4 py-3 text-sm">
+                                                        <div className="font-semibold text-slate-800 mb-1">{row['A 早段深度工作（最重要）']}</div>
+                                                        <div className="text-xs text-slate-500 truncate max-w-xs" title={row['A段具體步驟']}>{row['A段具體步驟']}</div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm">
+                                                        <div className="font-medium text-slate-700 mb-1">{row['B 下午訓練']}</div>
+                                                        <div className="text-xs text-slate-500 truncate max-w-xs" title={row['B段具體步驟']}>{row['B段具體步驟']}</div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm">
+                                                        <div className="font-medium text-slate-700 mb-1">{row['C 晚間整理／寫作']}</div>
+                                                        <div className="text-xs text-slate-500 truncate max-w-xs" title={row['C段具體步驟']}>{row['C段具體步驟']}</div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-slate-700 font-medium">
+                                                        {row['今日最低產出']}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // 元件：主應用程式
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('daily');
+            const [data, setData] = useState({
+                daily: [],
+                schools: [],
+                ielts: [],
+                docs: [],
+                milestones: []
+            });
+            const [loading, setLoading] = useState(true);
+
+            // 解析所有 CSV
+            useEffect(() => {
+                const parseCSV = (csvString) => {
+                    return new Promise((resolve) => {
+                        Papa.parse(csvString, {
+                            header: true,
+                            skipEmptyLines: true,
+                            complete: (results) => resolve(results.data)
+                        });
+                    });
+                };
+
+                Promise.all([
+                    parseCSV(rawDailyData),
+                    parseCSV(rawSchoolsData),
+                    parseCSV(rawIeltsData),
+                    parseCSV(rawDocsData),
+                    parseCSV(rawMilestoneData)
+                ]).then(([daily, schools, ielts, docs, milestones]) => {
+                    setData({ daily, schools, ielts, docs, milestones });
+                    setLoading(false);
+                });
+            }, []);
+
+            const tabs = [
+                { id: 'daily', name: '🔥 每日執行版', icon: 'ph-calendar-check' },
+                { id: 'schools', name: '🏫 學校清單', icon: 'ph-buildings' },
+                { id: 'ielts', name: '📚 IELTS資源', icon: 'ph-books' },
+                { id: 'docs', name: '📁 文件追蹤', icon: 'ph-files' },
+                { id: 'milestones', name: '⛳ 週里程碑', icon: 'ph-flag-banner' }
+            ];
+
+            if (loading) return <div className="min-h-screen flex items-center justify-center text-indigo-600 font-bold text-xl">資料載入中...</div>;
+
+            return (
+                <div className="flex flex-col md:flex-row min-h-screen">
+                    {/* 左側導覽列 */}
+                    <div className="w-full md:w-64 bg-slate-900 text-white flex flex-col md:fixed h-auto md:h-screen z-10 shadow-xl">
+                        <div className="p-6 pb-4 border-b border-slate-800">
+                            <h1 className="text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-300">
+                                GradApp 2026
+                            </h1>
+                            <p className="text-xs text-slate-400 mt-2 font-medium">研究所申請戰情室</p>
+                        </div>
+                        <div className="flex-1 overflow-y-auto py-4 px-3 flex flex-row md:flex-col gap-1 overflow-x-auto no-scrollbar">
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap md:whitespace-normal
+                                        ${activeTab === tab.id 
+                                            ? 'bg-indigo-600 text-white shadow-md' 
+                                            : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                                >
+                                    <i className={`ph-fill ${tab.icon} text-lg ${activeTab === tab.id ? 'text-indigo-200' : ''}`}></i>
+                                    {tab.name}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="p-6 border-t border-slate-800 text-xs text-slate-500 hidden md:block">
+                            <p>設計原則：</p>
+                            <p className="mt-1">1. A段只做最重要一件事</p>
+                            <p>2. 每天都要留下實體檔案</p>
+                            <p>3. 以官方公告為最高準則</p>
+                        </div>
+                    </div>
+
+                    {/* 右側主要內容區 */}
+                    <div className="flex-1 md:ml-64 p-4 md:p-8 w-full max-w-7xl mx-auto">
+                        {activeTab === 'daily' && <DailyExecutionView data={data.daily} />}
+                        {activeTab === 'schools' && <DataTable data={data.schools} title="目標學校與系所清單" />}
+                        {activeTab === 'ielts' && <DataTable data={data.ielts} title="IELTS 官方與準備資源" />}
+                        {activeTab === 'docs' && <DataTable data={data.docs} title="申請文件進度追蹤" />}
+                        {activeTab === 'milestones' && <DataTable data={data.milestones} title="每週階段與里程碑" />}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
